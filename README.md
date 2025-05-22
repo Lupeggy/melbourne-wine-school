@@ -1,4 +1,6 @@
-# Melbourne and Wine School
+node --version
+npm --versionecho 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"# Melbourne and Wine School
 
 A modern web application for Melbourne and Wine School, featuring:
 - Frontend: Next.js with Tailwind CSS
