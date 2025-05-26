@@ -1,0 +1,57 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const dotenv = require('dotenv');
+const expressEjsLayouts = require('express-ejs-layouts');
+
+// Configure environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Set view engine and views directory
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(expressEjsLayouts);
+app.set('layout', 'layouts/main');
+
+// Routes
+app.get('/', (req, res) => {
+  res.render('index', { 
+    title: 'Melbourne Wine School', 
+    layout: 'layouts/main'
+  });
+});
+
+app.get('/login', (req, res) => {
+  res.render('login', { 
+    title: 'Login - Melbourne Wine School',
+    layout: 'layouts/main'
+  });
+});
+
+app.get('/signup', (req, res) => {
+  res.render('signup', { 
+    title: 'Sign Up - Melbourne Wine School',
+    layout: 'layouts/main'
+  });
+});
+
+// API route
+app.get('/api', (req, res) => {
+  res.json({ message: 'Welcome to Melbourne and Wine School API' });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

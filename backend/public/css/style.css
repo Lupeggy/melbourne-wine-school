@@ -1,0 +1,36 @@
+/* Custom styles */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* Animation for form inputs */
+input:focus, button:focus {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Button hover effect */
+.bg-red-700:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Form input focus styles */
+.focus\:ring-red-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgba(185, 28, 28, var(--tw-ring-opacity));
+  border-color: rgba(185, 28, 28, 0.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
