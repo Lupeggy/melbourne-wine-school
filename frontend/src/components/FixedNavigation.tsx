@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from "react";
 import { 
   Menu, 
@@ -30,6 +30,7 @@ import {
   Calendar,
   MonitorPlay
 } from 'lucide-react';
+import jwt from 'jsonwebtoken';
 
 type NavItem = {
   name: string;
@@ -55,11 +56,22 @@ const FixedNavigation = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [isAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState(
+    typeof window !== 'undefined'
+      ? localStorage.getItem('email') || sessionStorage.getItem('email') || ''
+      : ''
+  );
+  const [username, setUsername] = useState(
+    typeof window !== 'undefined'
+      ? localStorage.getItem('username') || sessionStorage.getItem('username') || ''
+      : ''
+  );
   const [isScrolled, setIsScrolled] = useState(false);
   
   const navRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -82,6 +94,36 @@ const FixedNavigation = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Check auth state on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded && typeof decoded === 'object') {
+          setIsAuthenticated(true);
+          setUserEmail(decoded.email || '');
+        }
+      } catch (error) {
+        console.error('Token decoding failed:', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedEmail = localStorage.getItem('email') || sessionStorage.getItem('email');
+      const storedUsername = localStorage.getItem('username') || sessionStorage.getItem('username');
+      
+      if (storedEmail) setUserEmail(storedEmail);
+      if (storedUsername) setUsername(storedUsername);
+      
+      if (storedEmail || storedUsername) {
+        setIsAuthenticated(true);
+      }
+    }
   }, []);
 
   const toggleMenu = () => {
@@ -109,7 +151,21 @@ const FixedNavigation = () => {
     setIsCartOpen(false);
     setIsProfileOpen(false);
   };
-  
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('email');
+    setIsAuthenticated(false);
+    setUserEmail('');
+    setUsername('');
+    closeAll();
+    router.push('/');
+  };
+
   const navItems: NavItem[] = [
     { 
       name: "Home", 
@@ -364,7 +420,7 @@ const FixedNavigation = () => {
                   aria-label="User Profile"
                 >
                   <User className="h-5 w-5" />
-                  <span>Account</span>
+                  <span>{isAuthenticated ? username : 'Account'}</span>
                   <ChevronDown className={`h-4 w-4 transition-transform ${isProfileOpen ? 'transform rotate-180' : ''}`} />
                 </button>
                 
@@ -373,8 +429,7 @@ const FixedNavigation = () => {
                     {isAuthenticated ? (
                       <>
                         <div className="px-4 py-3 border-b">
-                          <p className="text-sm font-medium text-gray-900">Welcome back!</p>
-                          <p className="text-xs text-gray-500">user@example.com</p>
+                          <p className="text-sm font-medium text-gray-900">Welcome back, {username}!</p>
                         </div>
                         <Link 
                           href="/dashboard" 
@@ -399,10 +454,7 @@ const FixedNavigation = () => {
                         </Link>
                         <div className="border-t border-gray-100"></div>
                         <button 
-                          onClick={() => {
-                            // Handle logout
-                            closeAll();
-                          }}
+                          onClick={handleLogout}
                           className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
                         >
                           Sign Out

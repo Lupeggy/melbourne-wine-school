@@ -16,6 +16,7 @@ import config from './config/config.js';
 import logger from './utils/logger.js';
 import AppError from './utils/appError.js';
 import globalErrorHandler from './controllers/error.controller.js';
+import passport from './config/passport.js'; // Import Passport configuration
 
 // Import routes
 import apiRoutes from './routes/index.js';
@@ -71,6 +72,9 @@ app.use(
 
 // Serving static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Initialize Passport
+app.use(passport.initialize());
 
 // Test middleware
 app.use((req, res, next) => {

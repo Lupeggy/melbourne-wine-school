@@ -11,7 +11,7 @@ export default function WineFoodPairing() {
     duration: "6 weeks",
     price: 299,
     level: "Intermediate",
-    image: "/wine-food-pairing.jpg",
+    image: "/images/courses/wine-food-pairing.jpg",
     startDate: "April 15, 2024",
     schedule: "Tuesdays & Thursdays, 6:30 PM - 8:30 PM",
     location: "Melbourne CBD Campus & Online",
@@ -186,7 +186,7 @@ export default function WineFoodPairing() {
                 <p className="text-sm text-foreground/80 mb-6">
                   Includes all course materials, wine tastings, and a certificate upon completion.
                 </p>
-                <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-white">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-white">
                   Enroll Now
                 </Button>
                 <p className="text-xs text-foreground/60 mt-2 text-center">

@@ -11,17 +11,102 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [username, setUsername] = useState('');
+  const [showReactivate, setShowReactivate] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const router = useRouter();
+
+  const handleLogin = async (reactivate = false) => {
+    setError('');
+    const loadingState = reactivate ? setIsReactivating : setIsLoading;
+    loadingState(true);
+
+    try {
+      const url = new URL('http://localhost:3000/api/auth/login');
+      if (reactivate) {
+        url.searchParams.append('reactivate', 'true');
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle account deactivation
+        if (!reactivate) {
+          if (data.errorCode === 'account_inactive') {
+            setShowReactivate(true);
+            setError(data.message);
+            return;
+          } else if (data.errorCode === 'email_not_verified') {
+            setError('Please verify your email address before logging in. Check your inbox for a verification link.');
+            return;
+          }
+        }
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Store token and user data
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        const username = data.user?.username || email.split('@')[0];
+        localStorage.setItem('username', username);
+        sessionStorage.setItem('username', username);
+        window.location.href = '/';
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      setShowReactivate(false);
+    } finally {
+      loadingState(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log({ email, password, rememberMe });
+    handleLogin(false);
+  };
+
+  const handleReactivate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleLogin(true);
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      // This will redirect to Google's OAuth page
+      window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Google login failed');
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{error}</span>
+            {showReactivate && (
+              <div className="mt-2">
+                <button
+                  onClick={handleReactivate}
+                  disabled={isReactivating}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:underline"
+                >
+                  {isReactivating ? 'Reactivating...' : 'Click here to reactivate your account'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        
         <div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 text-center">
             Welcome Back
@@ -78,7 +163,6 @@ export default function LoginForm() {
             </div>
           </div>
 
-
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -104,9 +188,10 @@ export default function LoginForm() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-[#8B5CF6] hover:bg-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5CF6] transition-colors duration-200"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#8B5CF6] hover:bg-[#7C4DFF] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>
@@ -124,6 +209,7 @@ export default function LoginForm() {
 
         <div className="mt-6 grid grid-cols-3 gap-3">
           <button
+            onClick={handleGoogleLogin}
             type="button"
             className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5CF6]"
           >

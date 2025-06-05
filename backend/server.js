@@ -1,155 +1,104 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const dotenv = require('dotenv');
-const session = require('express-session');
-const { renderWithLayout } = require('./views/render');
+const { passport } = require('./src/middlewares/auth');
+const authRoutes = require('./src/routes/authRoutes');
+const db = require('./src/config/database');
 
-// Configure environment variables
-dotenv.config();
+console.log('[1/5] Starting server initialization...');
 
+// Database connection test
+async function testConnection() {
+  try {
+    console.log('[2/5] Testing database connection...');
+    await db.authenticate();
+    console.log('✅ Database connected');
+  } catch (error) {
+    console.error('❌ Connection error:', error);
+    process.exit(1);
+  }
+}
+
+console.log('[3/5] Setting up Express app...');
 const app = express();
-const PORT = process.env.PORT || 3000; // Changed from 3002 to 3000
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  secret: 'your-secret-key', // In production, use a proper secret from environment variables
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+// CORS Middleware
+app.use(cors({
+  origin: 'http://localhost:3002',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Set view engine and views directory
-app.set('view engine', 'ejs');
-app.set('views', [
-  path.join(__dirname, 'views'),
-  path.join(__dirname, 'views/layouts')
-]);
-
-// Custom render function
-app.use((req, res, next) => {
-  res.renderWithLayout = (template, data = {}) => {
-    return renderWithLayout(res, template, data);
-  };
-  next();
-});
+// Other middleware
+console.log('[4/5] Loading middleware...');
+app.use(express.json());
+app.use(passport.initialize());
 
 // Routes
+console.log('[5/5] Registering routes...');
+app.use('/api/auth', authRoutes);
+
+// Basic health check
 app.get('/', (req, res) => {
-  res.renderWithLayout('index', { 
-    title: 'Melbourne Wine School'
-  });
+  res.json({ status: 'Server is running' });
 });
 
-// Login page
-app.get('/login', (req, res) => {
-  // If already logged in, redirect to dashboard
-  if (req.session.user) {
-    return res.redirect('/dashboard');
-  }
-  res.renderWithLayout('login', { 
-    title: 'Login - Melbourne Wine School',
-    error: req.query.error
-  });
-});
-
-// Login form submission
-app.post('/login', (req, res) => {
-  // In a real app, you would validate credentials against a database
-  const { email, password } = req.body;
-  
-  // Simple validation (replace with real authentication)
-  if (email && password) {
-    // Set user session (in a real app, you'd verify credentials first)
-    req.session.user = {
-      id: 1,
-      name: 'Wine Enthusiast',
-      email: email,
-      memberSince: new Date().getFullYear() - 1
-    };
-    return res.redirect('/dashboard');
-  }
-  
-  // If validation fails, redirect back to login with error
-  res.redirect('/login?error=Invalid credentials');
-});
-
-// Logout route
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/');
-  });
-});
-
-// Dashboard route (protected)
-app.get('/dashboard', (req, res) => {
-  // Check if user is logged in
-  if (!req.session.user) {
-    return res.redirect('/login?error=Please log in to view the dashboard');
-  }
-  
-  res.renderWithLayout('dashboard', {
-    title: 'My Dashboard - Melbourne Wine School',
-    user: req.session.user
-  });
-});
-
-app.get('/signup', (req, res) => {
-  res.renderWithLayout('signup', { 
-    title: 'Sign Up - Melbourne Wine School'
-  });
-});
-
-app.get('/courses', (req, res) => {
-  res.renderWithLayout('courses', {
-    title: 'Wine Courses - Melbourne Wine School',
-    courses: [
-      {
-        id: 1,
-        title: 'Wine Fundamentals',
-        description: 'Learn the basics of wine tasting, grape varieties, and food pairing in this introductory course.',
-        duration: '4 weeks',
-        price: 299,
-        image: '/images/courses/fundamentals.jpg'
-      },
-      {
-        id: 2,
-        title: 'Wine & Food Pairing',
-        description: 'Master the art of pairing wine with food to enhance your dining experience.',
-        duration: '6 weeks',
-        price: 399,
-        image: '/images/courses/pairing.jpg'
-      },
-      {
-        id: 3,
-        title: 'Advanced Wine Studies',
-        description: 'Dive deep into the world of fine wines with our advanced certification program.',
-        duration: '12 weeks',
-        price: 899,
-        image: '/images/courses/advanced.jpg'
-      }
-    ]
-  });
-});
-
-// API route
-app.get('/api', (req, res) => {
-  res.json({ message: 'Welcome to Melbourne and Wine School API' });
-});
-
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+  console.error('Error:', err);
+  
+  // Handle JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Invalid token',
+      errorCode: 'invalid_token'
+    });
+  }
+  
+  // Handle JWT expired error
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Token expired',
+      errorCode: 'token_expired'
+    });
+  }
+  
+  // Handle Sequelize validation errors
+  if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
+    const messages = err.errors.map(e => e.message);
+    return res.status(400).json({
+      status: 'error',
+      message: 'Validation error',
+      errors: messages,
+      errorCode: 'validation_error'
+    });
+  }
+  
+  // Handle custom AppError
+  if (err.isOperational) {
+    return res.status(err.statusCode || 500).json({
+      status: err.status,
+      message: err.message,
+      errorCode: err.errorCode
+    });
+  }
+  
+  // Handle other errors
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    status: 'error',
+    message: 'Internal server error',
+    errorCode: 'internal_server_error'
+  });
 });
 
-// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// Start process
+testConnection();

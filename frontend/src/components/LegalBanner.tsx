@@ -6,20 +6,28 @@ import { X } from 'lucide-react';
 export default function LegalBanner() {
   const [isVisible, setIsVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isWarningDismissed, setIsWarningDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('legalWarningDismissed') === 'true';
+    }
+    return false;
+  });
 
   // Always show on page load
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(true);
-      // Clear any existing dismissal from localStorage
+      // Clear any existing dismissal from sessionStorage
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('legalBannerDismissed');
+        sessionStorage.removeItem('legalBannerDismissed');
       }
     }, 100);
     return () => clearTimeout(timer);
   }, []);
 
   const handleDismiss = () => {
+    sessionStorage.setItem('legalWarningDismissed', 'true');
+    setIsWarningDismissed(true);
     setIsClosing(true);
     setTimeout(() => {
       setIsVisible(false);
@@ -27,7 +35,7 @@ export default function LegalBanner() {
     }, 200);
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || isWarningDismissed) return null;
 
   return (
     <div 

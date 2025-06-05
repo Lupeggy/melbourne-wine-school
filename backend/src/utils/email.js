@@ -1,7 +1,7 @@
-import nodemailer from 'nodemailer';
-import pug from 'pug';
-import { htmlToText } from 'html-to-text';
-import config from '../config/config.js';
+const nodemailer = require('nodemailer');
+const pug = require('pug');
+const { htmlToText } = require('html-to-text');
+const config = require('../config/config');
 
 class Email {
   constructor(user, url) {
@@ -71,7 +71,7 @@ class Email {
   }
 }
 
-export const sendEmail = async (options) => {
+const sendEmail = async (options) => {
   // 1) Create a transporter
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -95,4 +95,7 @@ export const sendEmail = async (options) => {
   await transporter.sendMail(mailOptions);
 };
 
-export default Email;
+module.exports = {
+  Email,
+  sendEmail
+};
